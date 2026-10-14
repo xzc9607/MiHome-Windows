@@ -50,6 +50,15 @@ def main() -> int:
     for name in ("prop_list", "action_list", "sleep_time"):
         if name not in device_init_source:
             failures.append(f"mijiaDevice.__init__: 未初始化 {name}")
+    # 5.0.0 起规格按 spec_type（规格类型 URN）拉取：上游从设备列表条目里
+    # 读取该字段，适配层的索引与内存缓存也随之改以 spec_type 为键
+    if "spec_type" not in device_init_source:
+        failures.append("mijiaDevice.__init__: 未从设备列表读取 spec_type")
+    info_params = list(inspect.signature(mijia_api_module.get_device_info).parameters)
+    if info_params[:1] != ["spec_type"]:
+        failures.append(
+            "get_device_info: 首个参数应为 spec_type"
+            f"（实际为 {info_params[:1]}）；5.0.0 起规格源改为 miot-spec.org")
     # 共享设备路径在 service 层手工组装实例，依赖这些可写实例属性
     for attr in ("api", "did", "model", "name", "prop_list", "action_list"):
         if f"self.{attr}" not in device_init_source:
@@ -71,7 +80,8 @@ def main() -> int:
 
     # 异常体系（包顶层导出）
     for exc_name in ("LoginError", "DeviceGetError", "DeviceSetError",
-                     "DeviceActionError", "DeviceNotFoundError"):
+                     "DeviceActionError", "DeviceNotFoundError",
+                     "GetDeviceInfoError"):
         if not hasattr(mijia_api_module, exc_name):
             failures.append(f"异常类缺失: {exc_name}")
 
